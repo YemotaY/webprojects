@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG Coords</title>
+    <style>
+        svg {
+            border: 1px solid black;
+            background-color: #f0f0f0;
+        }
+        #coordinates {
+            margin-top: 10px;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <h1>SVG Koordinatensystem Verstehen</h1>
+    <svg id="svgCanvas" width="500" height="500">
+        <!-- X- und Y-Achse -->
+        <line x1="0" y1="250" x2="500" y2="250" stroke="red" stroke-width="2"/>
+        <line x1="250" y1="0" x2="250" y2="500" stroke="red" stroke-width="2"/>
+        <!-- Ein Kreis, den man bewegen kann -->
+        <circle id="circle" cx="250" cy="250" r="10" fill="blue"/>
+    </svg>
+
+    <div id="coordinates">
+        <strong>Koordinaten:</strong> <span id="coords">X: 250, Y: 250</span>
+    </div>
+
+    <script>
+        const svgCanvas = document.getElementById('svgCanvas');
+        const circle = document.getElementById('circle');
+        const coordsDisplay = document.getElementById('coords');
+
+        // Funktion zum Updaten der Koordinatenanzeige
+        function updateCoordinates(evt) {
+            const point = svgCanvas.createSVGPoint();
+            point.x = evt.clientX;
+            point.y = evt.clientY;
+
+            const svgCoords = point.matrixTransform(svgCanvas.getScreenCTM().inverse());
+
+            // Update der Koordinatenanzeige
+            coordsDisplay.textContent = `X: ${Math.round(svgCoords.x)}, Y: ${Math.round(svgCoords.y)}`;
+
+            // Bewegung des Kreises
+            circle.setAttribute('cx', svgCoords.x);
+            circle.setAttribute('cy', svgCoords.y);
+        }
+
+        // Event Listener für Mausbewegung im SVG
+        svgCanvas.addEventListener('mousemove', updateCoordinates);
+    </script>
+</body>
+</html>
