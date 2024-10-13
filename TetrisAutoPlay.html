@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Tetris mit Bot</title>
+  <style type="text/css">
+    html, body { background-color: black; color: white; font-family: monospace; font-size: large; font-weight: bold; text-align: center; }
+    canvas { outline: solid 1px white; }
+  </style>
+</head>
+<body>
+  <p id="score_display"></p>
+  <canvas id="canvas" width="300" height="600"></canvas>
+  <script type="text/javascript">
+    let canvas = document.getElementById("canvas"), context = canvas.getContext("2d");
+    let score = 0, timer = 120, maxTimer = 120, gameOver = false, paused = false;
+    let gameBoard = { width: 10, height: 20, blocks: [] };
+    let tetromino = { x: 0, y: 0, type: 0, blocks: [] };
+    let colors = ["#ffff00", "#ff00ff", "#00ffff", "#ff8800", "#0000ff", "#ff0000", "#00ff00"];
+    
+    let tetrominoDefinitions = [
+      [{ x:  0, y: 0 }, { x:  1, y: 0 }, { x:  0, y: 1 }, { x:  1, y: 1 }], // Square piece
+      [{ x:  0, y: 0 }, { x: -1, y: 0 }, { x:  1, y: 0 }, { x:  0, y: 1 }], // T piece
+      [{ x: -1, y: 0 }, { x:  0, y: 0 }, { x:  1, y: 0 }, { x:  2, y: 0 }], // Line piece
+      [{ x: -1, y: 0 }, { x:  0, y: 0 }, { x:  1, y: 0 }, { x: -1, y: 1 }], // L piece
+      [{ x: -1, y: 0 }, { x:  0, y: 0 }, { x:  1, y: 0 }, { x:  1, y: 1 }], // Backwards L piece
+      [{ x: -1, y: 0 }, { x:  0, y: 0 }, { x:  0, y: 1 }, { x:  1, y: 1 }], // ~ piece
+      [{ x:  0, y: 0 }, { x:  1, y: 0 }, { x: -1, y: 1 }, { x:  0, y: 1 }] // Backwards ~ piece
+    ];
+
+    let blockSize = { width: canvas.width / gameBoard.width, height: canvas.height / gameBoard.height };
+
+    function setup() {
+      for (let i = 0; i < gameBoard.height; ++i)
+        gameBoard.blocks.push(new Array(gameBoard.width).fill(0));
+      resetTetromino(tetromino);
+      if (!localStorage.highscore) localStorage.highscore = 0;
+      updateScoreDisplay();
+      botPlay();
+    }
+
+    function draw() {
+      context.fillStyle = "#333333";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      if (!gameOver && !paused && --timer < 0) {
+        advanceTetromino(tetromino);
+        timer = maxTimer;
+      }
+      drawBoard();
+      drawPreviewTetromino(tetromino);
+      drawTetromino(tetromino);
+      if (gameOver || paused) {
+        context.fillStyle = "#00000088";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.fillStyle = "#FFFFFF";
+        context.font = "46px Monospace";
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        context.fillText(paused ? "PAUSED" : "GAME OVER!", canvas.width * .5, canvas.height * .5);
+      }
+      if (!gameOver) window.requestAnimationFrame(draw);
+    }
+
+    function resetTetromino(tetro) {
+      tetro.x = Math.floor(gameBoard.width / 2) - 1; // Center the tetromino at the top
+      tetro.y = 0;
+      tetro.type = Math.floor(Math.random() * tetrominoDefinitions.length);
+      tetro.blocks = tetrominoDefinitions[tetro.type].slice();
+      for (let i = Math.floor(Math.random() * 4); i--;) tetro.blocks = getRotatedTetrominoBlocks(tetro, 1);
+      
+      if (checkTetrominoCollision(tetro, 0, 0, 0)) {
+        console.log("Game Over at initial position!");
+        gameOver = true; // Setze das Game Over Flag
+      }
+    }
+
+    function getRotatedTetrominoBlocks(tetro, direction = 1) {
+      if (direction === 0 || tetro.type === 0) return tetro.blocks;
+      let newBlocks = [];
+      for (let block of tetro.blocks)
+        newBlocks.push({ x: -block.y * direction, y: block.x * direction });
+      return newBlocks;
+    }
+
+    function moveTetromino(tetro, offsetX, offsetY, rotation = 0) {
+      if (checkTetrominoCollision(tetro, offsetX, offsetY, rotation)) return false;
+      tetro.x += offsetX;
+      tetro.y += offsetY;
+      tetro.blocks = getRotatedTetrominoBlocks(tetro, rotation);
+      return true;
+    }
+
+    function advanceTetromino(tetro) {
+      if (!moveTetromino(tetro, 0, 1)) {
+        placeTetromino(tetro);
+      }
+    }
+
+    function placeTetromino(tetro) {
+      let collisionOccurred = false;
+      for (let block of tetro.blocks) {
+        if (tetromino.y + block.y < 0) {
+          console.log("Game Over when placing tetromino!");
+          gameOver = true;
+          collisionOccurred = true;
+          break;
+        } else {
+          gameBoard.blocks[tetro.y + block.y][tetro.x + block.x] = tetro.type + 1;
+        }
+      }
+
+      if (!collisionOccurred) {
+        score += removeCompletedLines() * 10;
+        localStorage.highscore = Math.max(score, localStorage.highscore);
+        updateScoreDisplay();
+        resetTetromino(tetro);
+        timer = maxTimer;
+      }
+    }
+
+    function dropTetromino(tetro) {
+      while (moveTetromino(tetro, 0, 1));
+      placeTetromino(tetro);
+    }
+
+    function checkTetrominoCollision(tetro, offsetX, offsetY, rotation = 0) {
+      for (let block of getRotatedTetrominoBlocks(tetro, rotation)) {
+        let blockX = tetro.x + block.x + offsetX;
+        let blockY = tetro.y + block.y + offsetY;
+        if (blockX < 0 || blockX >= gameBoard.width ||
+            blockY < 0 || blockY >= gameBoard.height ||
+            gameBoard.blocks[blockY][blockX]) {
+          console.log(`Collision detected at (${blockX}, ${blockY})`);
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function removeCompletedLines() {
+      let completedLineCount = 0;
+      for (let y = 0; y < gameBoard.height; ++y) {
+        if (gameBoard.blocks[y].includes(0) === false) {
+          completedLineCount++;
+          gameBoard.blocks.splice(y, 1);
+          gameBoard.blocks.unshift(new Array(gameBoard.width).fill(0));
+        }
+      }
+      return completedLineCount;
+    }
+
+    function drawTetromino(tetro, isPreview = false) {
+      context.fillStyle = isPreview ? "#FFFFFF33" : colors[tetro.type];
+      for (let block of tetro.blocks) {
+        context.fillRect((tetro.x + block.x) * blockSize.width, (tetro.y + block.y) * blockSize.height, blockSize.width, blockSize.height);
+      }
+    }
+
+    function drawPreviewTetromino(tetro) {
+      let previewTetromino = { ...tetro };
+      while (moveTetromino(previewTetromino, 0, 1));
+      drawTetromino(previewTetromino, true);
+    }
+
+    function drawBoard() {
+      for (let y = 0; y < gameBoard.height; ++y) {
+        for (let x = 0; x < gameBoard.width; ++x) {
+          if (gameBoard.blocks[y][x] !== 0) {
+            context.fillStyle = colors[gameBoard.blocks[y][x] - 1];
+            context.fillRect(x * blockSize.width, y * blockSize.height, blockSize.width, blockSize.height);
+          }
+        }
+      }
+    }
+
+    function updateScoreDisplay() {
+      document.getElementById("score_display").innerText = `Score: ${score}  Highscore: ${localStorage.highscore}`;
+    }
+
+    function botPlay() {
+      if (gameOver) return;
+
+      // Die beste Position für das Tetromino finden
+      let bestPosition = getBestPosition(tetromino);
+      tetromino.x = bestPosition.x;
+      
+      // Animation: Lass den Bot das Tetromino nach unten bewegen
+      let dropInterval = setInterval(() => {
+        if (moveTetromino(tetromino, 0, 1)) {
+          draw(); // Aktuelle Darstellung zeichnen
+        } else {
+          clearInterval(dropInterval); // Stoppe die Animation, wenn es nicht weitergeht
+          placeTetromino(tetromino);
+          updateScoreDisplay(); // Aktualisiere die Punktanzeige
+          setTimeout(botPlay, 100); // Bot für den nächsten Zug zurücksetzen
+        }
+      }, 100); // Intervall für die Animation
+    }
+
+    function getBestPosition(tetro) {
+      let bestX = 0;
+      let bestHeight = gameBoard.height;
+      for (let x = 0; x < gameBoard.width; x++) {
+        let testTetro = { ...tetro, x: x, y: 0 };
+        while (moveTetromino(testTetro, 0, 1));
+        // Finde die Höhe des Tetrominos, wenn er an dieser Position landet
+        let height = gameBoard.height - testTetro.y;
+        if (height < bestHeight) {
+          bestHeight = height;
+          bestX = x;
+        }
+      }
+      return { x: bestX, height: bestHeight };
+    }
+
+    document.addEventListener("keydown", function(ev) {
+      switch (ev.keyCode) {
+        case 37: moveTetromino(tetromino, -1, 0); break; // LEFT ARROW
+        case 39: moveTetromino(tetromino,  1, 0); break; // RIGHT ARROW
+        case 40: advanceTetromino(tetromino); break; // DOWN ARROW
+        case 38: moveTetromino(tetromino, 0, 0, 1); break; // UP ARROW
+        case 32: dropTetromino(tetromino); break; // SPACEBAR
+        case 80: paused = !paused; break; // P
+      }
+      draw(); // Bei Tastendruck zeichne die aktuelle Position
+    });
+
+    setup();
+    draw(); // Starte die Zeichenschleife
+  </script>
+</body>
+</html>
