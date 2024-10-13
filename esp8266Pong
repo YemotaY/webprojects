@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+
+<html lang="de">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pong Spiel</title>
+</head>
+
+<body>
+  <div style="width:100%;height:30px;">
+    <button style="width:10%;" id="openFulls">FS</button>
+    <button style="width:10%;" id="closeFulls">X</button>
+  </div>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      flex-flow: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: black;
+    }
+
+    #pongCanvas {
+      display: none;
+      border: 2px solid white;
+    }
+
+    #menu {
+      color: white;
+      text-align: center;
+    }
+
+    #menu button {
+      padding: 10px 20px;
+      margin: 10px;
+      background-color: white;
+      color: black;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    #menu button:hover {
+      background-color: grey;
+    }
+
+    #restartButton {
+      display: none;
+      padding: 10px 20px;
+      margin: 10px;
+      background-color: white;
+      color: black;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    #pauseButton {
+      display: none;
+      padding: 10px 20px;
+      margin: 10px;
+      background-color: white;
+      color: black;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    #restartButton:hover {
+      background-color: grey;
+    }
+  </style>
+
+  <div id="menu">
+
+    <h1>Willkommen zu Pong</h1>
+
+    <p>Wähle deinen Modus:</p>
+
+    <button id="playAI">Gegen die KI spielen</button>
+
+    <button id="waitPlayer">Auf zweiten Spieler warten</button>
+
+    <div id="difficultySelection" style="display: none;">
+
+      <p>Wähle Schwierigkeitsgrad der KI:</p>
+
+      <button id="easy">Leicht</button>
+
+      <button id="medium">Mittel</button>
+
+      <button id="hard">Schwer</button>
+
+    </div>
+
+  </div>
+  <div style="height:30px;width:100%;display:flex;justify-content: center;align-items: center;">
+    <button id="restartButton">Reset</button>
+    <button id="pauseButton">Pause</button>
+  </div>
+  </br>
+  <canvas id="pongCanvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById("pongCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = screen.width -(screen.width/100*5);
+    canvas.height = screen.height / 3;
+    const paddleWidth = 10,
+      paddleHeight = 50;
+    const ballRadius = 10;
+    let playerScore = 0;
+    let aiScore = 0;
+    let player = {
+      x: 0,
+      y: (canvas.height - paddleHeight) / 2,
+      width: paddleWidth,
+      height: paddleHeight,
+      dy: 0
+    };
+    let ai = {
+      x: canvas.width - paddleWidth,
+      y: (canvas.height - paddleHeight) / 2,
+      width: paddleWidth,
+      height: paddleHeight,
+      dy: 0
+    };
+    let ball = {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      radius: ballRadius,
+      dx: 3,
+      dy: 3
+    };
+    let aiSpeed = 2.5; // Variable für die KI-Geschwindigkeit
+    function drawRect(x, y, width, height, color) {
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, width, height);
+    }
+
+    function drawCircle(x, y, radius, color) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawText(text, x, y, color) {
+      ctx.fillStyle = color;
+      ctx.font = "16px Arial";
+      ctx.fillText(text, x, y);
+    }
+
+    function movePlayer() {
+      player.y += player.dy;
+      if (player.y < 0) player.y = 0;
+      if (player.y + paddleHeight > canvas.height) player.y = canvas.height - paddleHeight;
+    }
+
+    function moveAI() {
+      if (ball.y < ai.y + ai.height / 2) ai.y -= aiSpeed;
+      else if (ball.y > ai.y + ai.height / 2) ai.y += aiSpeed;
+      if (ai.y < 0) ai.y = 0;
+      if (ai.y + paddleHeight > canvas.height) ai.y = canvas.height - paddleHeight;
+    }
+
+    function moveBall() {
+      ball.x += ball.dx;
+      ball.y += ball.dy;
+      // Ball prallt oben oder unten ab
+      if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
+        ball.dy = -ball.dy;
+      }
+      // Ball trifft auf Spieler-Paddle
+      if (ball.x - ball.radius < player.x + player.width &&
+        ball.y > player.y && ball.y < player.y + player.height) {
+        ball.dx = -ball.dx;
+      }
+      // Ball trifft auf KI-Paddle
+      if (ball.x + ball.radius > ai.x &&
+        ball.y > ai.y && ball.y < ai.y + ai.height) {
+        ball.dx = -ball.dx;
+      }
+      // Ball geht über die rechte Seite hinaus (Punkt für den Spieler)
+      if (ball.x + ball.radius > canvas.width) {
+        playerScore++;
+        resetBall();
+      }
+      // Ball geht über die linke Seite hinaus (Punkt für die KI)
+      if (ball.x - ball.radius < 0) {
+        aiScore++;
+        resetBall();
+      }
+    }
+
+    function resetBall() {
+      ball.x = canvas.width / 2;
+      ball.y = canvas.height / 2;
+      ball.dx = -ball.dx;
+    }
+
+    function resetGame() {
+      playerScore = 0;
+      aiScore = 0;
+      resetBall();
+    }
+
+    function update() {
+      movePlayer();
+      moveAI();
+      moveBall();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawRect(0, 0, canvas.width, canvas.height, "black");
+      // Zeichne Spieler- und KI-Paddle
+      drawRect(player.x, player.y, player.width, player.height, "white");
+      drawRect(ai.x, ai.y, ai.width, ai.height, "white");
+      // Zeichne den Ball
+      drawCircle(ball.x, ball.y, ball.radius, "white");
+      // Zeichne den Punktestand
+      drawText("Spieler: " + playerScore, 10, 20, "white");
+      drawText("KI: " + aiScore, canvas.width - 50, 20, "white");
+    }
+
+    function gameLoop() {
+      update();
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+    // Menu handling
+    const menu = document.getElementById("menu");
+    const difficultySelection = document.getElementById("difficultySelection");
+    const playAIButton = document.getElementById("playAI");
+    const waitPlayerButton = document.getElementById("waitPlayer");
+    const restartButton = document.getElementById("restartButton");
+    const pauseButton = document.getElementById("pauseButton");
+    // Event listeners for difficulty buttons
+    document.getElementById("easy").addEventListener("click", () => startGame(2));
+    document.getElementById("medium").addEventListener("click", () => startGame(4));
+    document.getElementById("hard").addEventListener("click", () => startGame(6));
+    // Show difficulty selection when "Gegen die KI spielen" is clicked
+    playAIButton.addEventListener("click", () => {
+      difficultySelection.style.display = "block";
+    });
+    // "Auf zweiten Spieler warten" clicked (Future multiplayer functionality can be added here)
+    waitPlayerButton.addEventListener("click", () => {
+      alert("Multiplayer wird noch nicht unterstützt!");
+    });
+    // Start game with selected difficulty
+    function startGame(difficulty) {
+      aiSpeed = difficulty; // Set AI speed based on difficulty
+      menu.style.display = "none";
+      canvas.style.display = "block"; // Show the canvas
+      restartButton.style.display = "block"; // Show restart button
+      pauseButton.style.display = "block"; // Show restart button
+      gameLoop();
+    }
+
+    function stopGame() {
+      menu.style.display = "none";
+      canvas.style.display = "block"; // Show the canvas
+      restartButton.style.display = "block"; // Show restart button
+      gameLoop();
+    }
+    // Restart game event listener
+    restartButton.addEventListener("click", () => {
+      resetGame();
+    });
+    pauseButton.addEventListener("click", () => {
+      pauseGame();
+    });
+    // Touch event handling to control the player paddle
+    canvas.addEventListener("touchmove", (event) => {
+      const touch = event.touches[0];
+      const touchY = touch.clientY - canvas.getBoundingClientRect().top;
+      // Move the paddle to follow the finger's vertical position
+      player.y = touchY - paddleHeight / 2;
+      // Keep the paddle within the bounds of the canvas
+      if (player.y < 0) player.y = 0;
+      if (player.y + paddleHeight > canvas.height) player.y = canvas.height - paddleHeight;
+    });
+    /* Get the documentElement (<html>) to display the page in fullscreen */
+    document.getElementById("openFulls").addEventListener("click", openFulls);
+        document.getElementById("closeFulls").addEventListener("click", closeFulls);
+    /* View in fullscreen */
+    function openFulls() {
+      var elem = document.documentElement;
+      if (elem.requestFullscreen) {
+        elem.requestFullscreen();
+      } else if (elem.webkitRequestFullscreen) {
+        /* Safari */
+        elem.webkitRequestFullscreen();
+      } else if (elem.msRequestFullscreen) {
+        /* IE11 */
+        elem.msRequestFullscreen();
+      }
+    }
+    /* Close fullscreen */
+    function closeFulls() {
+      var elem = document.documentElement;
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        /* Safari */
+        document.webkitExitFullscreen();
+      } else if (document.msExitFullscreen) {
+        /* IE11 */
+        document.msExitFullscreen();
+      }
+    }
+  </script>
+
+</body>
+
+</html>
