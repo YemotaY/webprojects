@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formular mit Stufen</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: wrap;
+            width: wrap;
+            background-color: #f0f0f0;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            width: 100%;
+            max-width: 600px;
+            background: #fff;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .step {
+            display: none;
+            margin-bottom: 20px;
+        }
+        .step img {
+            max-width: 100px;
+            display: block;
+            margin-bottom: 10px;
+        }
+        .step.active {
+            height:100%;
+            display: block;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+            z-index: 2;
+        }
+
+        .checkbox-group {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .checkbox-item {
+            position: relative;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+        .checkbox-item label{
+            display: block;
+            position: relative;
+            text-align: center;
+        }
+
+        .checkbox-item input {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            z-index: 100;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            opacity: 1;
+        }
+        .checkbox-item img {
+            display: block;
+            margin: 0 auto;
+            max-width: 200px;
+            border: 2px solid transparent;
+            border-radius: 4px;
+            transition: border 0.3s ease;
+        }
+
+        .checkbox-item input:checked + label img {
+            border-color: #007BFF;
+        }
+
+        input[type="number"], input[type="text"] {
+            width: calc(100% - 20px);
+            margin: 0 auto;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+    </style>
+    <script src="saving_calculator.js"></script>
+</head>
+<body>
+    <form id="stepForm">
+        <!-- Schritt 1: Privat/Gewerblich/Sonstiges -->
+        <div class="step active" id="step1">
+            <label>Wie wird die Anlage genutzt :</label>
+            <div class="checkbox-group">
+                <div class="checkbox-item">
+                    <input type="radio" name="type" id="privat" value="Privat" required>
+                    <label for="privat">
+                        <img src="./img/small.png" alt="Privat">
+                        Privat
+                    </label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="radio" name="type" id="gewerblich" value="Gewerblich" required>
+                    <label for="gewerblich">
+                        <img src="./img/big.png" alt="Gewerblich">
+                        Gewerblich
+                    </label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="radio" name="type" id="sonstiges" value="Sonstiges" required>
+                    <label for="sonstiges">
+                        <img src="./img/sonstiges.png" alt="Sonstiges">
+                        Sonstiges
+                    </label>
+                </div>
+            </div>
+            <button type="button" onclick="nextStep(1)">Weiter</button>
+        </div>
+
+        <!-- Schritt 2: Anzahl der Personen -->
+        <div class="step" id="step2">
+            <label for="persons">Anzahl der Personen :</label>
+            <input type="number" id="persons" min="1" required>
+            <button type="button" onclick="nextStep(2)">Weiter</button>
+        </div>
+
+        <!-- Schritt 3: Dachtyp -->
+        <div class="step" id="step3">
+            <label>Dachtyp:</label>
+            <div class="checkbox-group">
+                <div class="checkbox-item">
+                    <input type="radio" name="roofType" id="satteldach" value="Satteldach" required>
+                    <label for="satteldach">
+                        <img src="./img/satteldach.png" alt="Satteldach">
+                        Satteldach
+                    </label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="radio" name="roofType" id="pultdach" value="Pultdach" required>
+                    <label for="pultdach">
+                        <img src="./img/pultdach.png" alt="Pultdach">
+                        Pultdach
+                    </label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="radio" name="roofType" id="flachdach" value="Flachdach" required>
+                    <label for="flachdach">
+                        <img src="./img/flachdach.png" alt="Flachdach">
+                        Flachdach
+                    </label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="radio" name="roofType" id="sonstigesDach" value="Sonstiges" required>
+                    <label for="sonstigesDach">
+                        <img src="./img/sonstiges.png" alt="Sonstiges Dach">
+                        Sonstiges
+                    </label>
+                </div>
+            </div>
+            <button type="button" onclick="nextStep(3)">Weiter</button>
+        </div>
+
+        <!-- Schritt 4: Adresse -->
+        <div class="step" id="step4">
+            <label for="address">Straße und Hausnummer:</label>
+            <input type="text" id="address" required>
+            <label for="zipCity">PLZ und Ort:</label>
+            <input type="text" id="zipCity" required>
+            <button type="button" onclick="submitForm()">Angebot berechnen</button>
+        </div>
+    </form>
+
+    <script>
+        let currentStep = 1;
+        let result = {}
+        function nextStep(step) {
+            // Validierung
+            const currentElement = document.querySelector(`#step${step} input:checked, #step${step} input:not([type=radio])`);
+            if (!currentElement || !currentElement.checkValidity()) {
+                //Wie kann man als layer8 nur so undankbar sein. Nice try guy
+                return;
+            }
+
+            document.getElementById(`step${step}`).classList.remove('active');
+            currentStep++;
+            document.getElementById(`step${currentStep}`).classList.add('active');
+        }
+        function resetLastStep() {
+            // Eingabefelder zurücksetzen
+            document.getElementById('address').value = '';
+            document.getElementById('zipCity').value = '';
+
+            // Optional: Hinweis anzeigen
+            alert('Ungültige Adresse. Bitte geben Sie eine gültige Straße und Hausnummer ein.');
+            
+            // Den Schritt erneut anzeigen
+            document.getElementById(`step${currentStep}`).classList.add('active');
+        }
+        function setFormToFullWidth() {
+            const form = document.getElementById('stepForm'); // Das erste Formular auf der Seite auswählen
+            form.style.width = '100%'; // Die Breite des Formulars auf 100% setzen
+
+        }
+        function submitForm() {
+            if (!isValidAddress(document.getElementById('address').value)) {
+                alert('Bitte geben Sie eine gültige Adresse im Format "Straßenname Hausnummer" ein (z.B. "Musterstraße 12" oder "Lange-Straße 4").');
+                resetLastStep();
+                return;
+            }
+            if (!isValidPLZ(document.getElementById('zipCity').value)) {
+                alert('Bitte geben Sie eine gültige Postleitzahl + Ort ein');
+                resetLastStep();
+                return;
+            }
+            const data = {
+                type: document.querySelector('input[name="type"]:checked').value,
+                persons: document.getElementById('persons').value,
+                roofType: document.querySelector('input[name="roofType"]:checked').value,
+                address: document.getElementById('address').value,
+                zipCity: document.getElementById('zipCity').value
+            };
+            result= calculateSolarSavings_Basic(data.type, data.persons, data.roofType);
+            console.log(`Geschätzte Stromersparnis: ${result.min}€ - ${result.max}€ über 20 Jahre.`); 
+            showSuccessPage();  
+        }
+        
+        function showSuccessPage() {
+            const formContainer = document.getElementById('stepForm');
+            setFormToFullWidth()
+            // Ersetze den gesamten Inhalt des Formulars mit einem iFrame
+            formContainer.innerHTML = `
+                    <h2>Ihr geschätzes Ergebnis liegt bei:</h2>
+                    <h5>Stromersparnis: ${result.min}€ - ${result.max}€ über 20 Jahre.</h5>
+                    </br>
+                    <button><a href="#">Jetzt Termin vereinbaren</a></button>
+            `;
+        }
+
+        function isValidAddress(input) {
+            const addressPattern = /^[A-Za-zÄäÖöÜüß\- ]+\s\d+[a-zA-Z]?$/;
+            return addressPattern.test(input);
+        }
+        function isValidPLZ(input) {
+            const plzOrtPattern = /^\d{5}\s[A-Za-zÄäÖöÜüß\- ]+$/;
+            return plzOrtPattern.test(input);
+        }
+        
+    </script>
+</body>
+</html>
