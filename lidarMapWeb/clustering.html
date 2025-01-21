@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DBSCAN Clustering for LiDAR Data</title>
+  <style>
+    canvas {
+      border: 1px solid black;
+      display: block;
+      margin: 20px auto;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>DBSCAN Clustering for LiDAR Data</h1>
+  <p>Lade eine JSON-Datei mit LiDAR-Daten hoch:</p>
+  <input type="file" id="fileInput" accept=".json">
+  <canvas id="clusterCanvas" width="800" height="800"></canvas>
+
+  <script>
+    const canvas = document.getElementById('clusterCanvas');
+    const ctx = canvas.getContext('2d');
+    const canvasSize = 800;
+    const centerX = canvasSize / 2;
+    const centerY = canvasSize / 2;
+    const scale = 0.01;
+
+    // Funktion zur Konvertierung von Polar- zu Kartesischen Koordinaten
+    function polarToCartesian(angle, distance) {
+      const radians = (angle % 360) * (Math.PI / 180); // Winkel in Bogenmaß
+      const x = distance * Math.cos(radians);
+      const y = distance * Math.sin(radians);
+      return [x, y];
+    }
+
+    // Euklidische Distanz
+    function euclideanDistance(point1, point2) {
+      const dx = point1[0] - point2[0];
+      const dy = point1[1] - point2[1];
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    // DBSCAN-Algorithmus
+    function dbscan(points, epsilon, minPoints) {
+      const clusters = [];
+      const visited = new Set();
+      const noise = [];
+      const labels = Array(points.length).fill(null);
+
+      let clusterId = 0;
+
+      function regionQuery(pointIdx) {
+        return points
+          .map((_, idx) => idx)
+          .filter(idx => euclideanDistance(points[pointIdx], points[idx]) <= epsilon);
+      }
+
+      function expandCluster(pointIdx, neighbors) {
+        clusters[clusterId] = clusters[clusterId] || [];
+        clusters[clusterId].push(points[pointIdx]);
+        labels[pointIdx] = clusterId;
+
+        for (let i = 0; i < neighbors.length; i++) {
+          const neighborIdx = neighbors[i];
+          if (!visited.has(neighborIdx)) {
+            visited.add(neighborIdx);
+            const newNeighbors = regionQuery(neighborIdx);
+            if (newNeighbors.length >= minPoints) {
+              neighbors.push(...newNeighbors);
+            }
+          }
+          if (labels[neighborIdx] === null) {
+            labels[neighborIdx] = clusterId;
+            clusters[clusterId].push(points[neighborIdx]);
+          }
+        }
+      }
+
+      for (let i = 0; i < points.length; i++) {
+        if (visited.has(i)) continue;
+
+        visited.add(i);
+        const neighbors = regionQuery(i);
+
+        if (neighbors.length < minPoints) {
+          noise.push(points[i]);
+        } else {
+          expandCluster(i, neighbors);
+          clusterId++;
+        }
+      }
+
+      return { clusters, noise };
+    }
+
+    // Zeichne Punkte auf der Leinwand
+    function drawPoints(points, color) {
+      ctx.fillStyle = color;
+      points.forEach(point => {
+        const x = centerX + point[0] * scale;
+        const y = centerY - point[1] * scale; // Y-Achse umkehren
+        ctx.beginPath();
+        ctx.arc(x, y, 5, 0, 2 * Math.PI);
+        ctx.fill();
+      });
+    }
+
+    // Zeichne die Cluster
+    function drawClusters(clusters, noise) {
+      ctx.clearRect(0, 0, canvasSize, canvasSize); // Leinwand löschen
+
+      // Zeichne Cluster in verschiedenen Farben
+      const colors = ['red', 'blue', 'green', 'orange', 'purple'];
+      clusters.forEach((cluster, index) => {
+        const color = colors[index % colors.length];
+        drawPoints(cluster, color);
+      });
+
+      // Zeichne Noise-Punkte (grau)
+      drawPoints(noise, 'gray');
+    }
+
+    // Daten validieren
+    function validateData(lidarData) {
+      return lidarData
+        .filter(point => {
+          // Überprüfe, ob distance und angle gültig sind
+          return (
+            typeof point.distance === 'number' &&
+            typeof point.angle === 'number' &&
+            !isNaN(point.distance) &&
+            !isNaN(point.angle) &&
+            point.distance < 12000 &&
+            point.distance > 400 &&
+            point.quality > 45 &&
+            point.quality < 55 &&
+            point.angle > 0 &&
+            point.angle < 360
+          );
+        })
+        .map(point => polarToCartesian(point.angle, point.distance));
+    }
+
+    // Verarbeite die Datei, führe DBSCAN aus und visualisiere die Ergebnisse
+    document.getElementById('fileInput').addEventListener('change', function (event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          const lidarData = JSON.parse(e.target.result);
+
+          // Daten validieren
+          const points = validateData(lidarData);
+
+          // Überprüfen, ob Punkte vorhanden sind
+          if (points.length === 0 ) {
+            alert('Keine gültigen Punkte in der Datei gefunden.');
+            return;
+          }
+
+          // DBSCAN-Parameter
+          const epsilon = 2000; // Maximaler Abstand zwischen Punkten
+          const minPoints = 2;  // Minimale Punktanzahl für einen Cluster
+
+          // Führe DBSCAN aus
+          const { clusters, noise } = dbscan(points, epsilon, minPoints);
+
+          // Zeichne die Cluster
+          drawClusters(clusters, noise);
+
+        } catch (error) {
+          alert('Fehler beim Verarbeiten der Datei: ' + error.message);
+        }
+      };
+
+      reader.readAsText(file);
+    });
+  </script>
+</body>
+</html>

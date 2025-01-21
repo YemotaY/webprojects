@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LiDAR 2D Map</title>
+  <style>
+    canvas {
+      border: 1px solid black;
+      display: block;
+      margin: 20px auto;
+    }
+  </style>
+</head>
+<body>
+  <h1 style="text-align:center;">LiDAR 2D Map</h1>
+  <input type="file" id="fileInput" accept=".json" />
+  <canvas id="lidarCanvas" width="600" height="600"></canvas>
+
+  <script>
+    const canvas = document.getElementById('lidarCanvas');
+    const ctx = canvas.getContext('2d');
+    const canvasSize = 600;
+    const centerX = canvasSize / 2;
+    const centerY = canvasSize / 2;
+    const scale = 0.05;
+
+    function drawAxes() {
+      ctx.strokeStyle = '#ccc';
+      ctx.beginPath();
+      ctx.moveTo(centerX, 0);
+      ctx.lineTo(centerX, canvasSize);
+      ctx.moveTo(0, centerY);
+      ctx.lineTo(canvasSize, centerY);
+      ctx.stroke();
+    }
+
+    function polarToCartesian(angle, distance) {
+      const radians = (angle % 360) * (Math.PI / 180);
+      const x = distance * Math.cos(radians);
+      const y = distance * Math.sin(radians);
+      return { x, y };
+    }
+
+    function drawPoints(data) {
+      data.forEach(point => {
+        if (point.distance > 0) {
+            if(point.quality>45 && point.quality<50 && point.distance > 200){
+                const { x, y } = polarToCartesian(point.angle, point.distance * scale);
+                ctx.fillStyle = 'blue';
+                ctx.beginPath();
+                ctx.arc(centerX + x, centerY - y, 5, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+        }
+      });
+    }
+
+    document.getElementById('fileInput').addEventListener('change', event => {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const lidarData = JSON.parse(e.target.result);
+          ctx.clearRect(0, 0, canvasSize, canvasSize);
+          drawAxes();
+          drawPoints(lidarData);
+        };
+        reader.readAsText(file);
+      }
+    });
+
+    // Draw initial axes
+    drawAxes();
+  </script>
+</body>
+</html>
